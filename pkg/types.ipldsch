@@ -1,0 +1,56 @@
+
+type BlockStatus enum {
+   # Present means the linked block was present on this machine, and is included
+   # in this message
+   | Present             ("p")
+   # NotSent means the linked block was present on this machine, but not sent
+   # - it needs to be fetched elsewhere
+   | NotSent             ("n")
+   # Missing means I did not have the linked block, so I skipped over this part
+   # of the traversal
+   | Missing             ("m")
+   # Duplicate means the linked block was encountered, but we already have traversed it
+   # so we're not traversing it again -- the block has likely already been transmitted
+   | Duplicate           ("d")
+} representation string
+
+# Metadata for each "link" in the DAG being communicated, each block gets one of
+# these and missing blocks also get one
+type BlockMetadatum struct {
+  Link Link
+  Status BlockStatus
+} representation tuple
+
+type BlockMetadata [BlockMetadatum]
+
+type Path struct {
+  # name of this path segment
+	Segments [String] (rename "seg")
+  # CIDs required, in order, to verify this segment of the path
+  Blocks BlockMetadata (rename "blks")
+} representation map
+
+type Ordering enum {
+  # Depthfirst indicates blocks will be transmitted depth first
+  | DepthFirst ("d")
+  # BreadthFirst indicates blocks will be breadth depth first
+  | BreadthFirst ("b")
+} representation string
+
+type DAG struct {
+  Ordering Ordering (rename "ord")
+  Blocks BlockMetadata (rename "blks")
+} representation map
+
+type Kind enum {
+  # Path indicates a pathing sequence
+  | Path ("p")
+  # DAG indicates a DAG block
+  | DAG ("d")
+} representation string
+
+type StarGateMessage struct {
+  Kind Kind (rename "knd")
+  Path nullable Path (rename "pth")
+  DAG nullable DAG (rename "dag")
+} representation map
