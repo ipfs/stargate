@@ -15,9 +15,8 @@ import (
 	"go.uber.org/multierr"
 )
 
+// UnixFSStore is an interface for fetching metadata about UnixFS queries
 type UnixFSStore interface {
-	AddRoot(ctx context.Context, root cid.Cid, metadata []byte, linkSystem *ipld.LinkSystem) error
-	AddRootRecursive(ctx context.Context, root cid.Cid, metadata []byte, linkSystem *ipld.LinkSystem) error
 	DirLs(ctx context.Context, root cid.Cid, metadata []byte) ([][]unixfsstore.TraversedCID, error)
 	DirPath(ctx context.Context, root cid.Cid, metadata []byte, path string) ([]cid.Cid, error)
 	FileAll(ctx context.Context, root cid.Cid, metadata []byte) ([][]unixfsstore.TraversedCID, error)
@@ -26,10 +25,12 @@ type UnixFSStore interface {
 	RootCIDWithMetadata(ctx context.Context, root cid.Cid, metadata []byte) (*unixfsstore.RootCID, error)
 }
 
+// LinkSystemResolves link systems from a root and associated metadata
 type LinkSystemResolver interface {
 	ResolveLinkSystem(ctx context.Context, root cid.Cid, metadata []byte) (*ipld.LinkSystem, error)
 }
 
+// NewUnixFSAppResolver returns a new UnixFS resolver using the given UnixFSStore and LinkSystemResolver
 func NewUnixFSAppResolver(store UnixFSStore, linkSystemResolver LinkSystemResolver) *UnixFSAppResolver {
 	return &UnixFSAppResolver{
 		store:              store,
@@ -37,11 +38,14 @@ func NewUnixFSAppResolver(store UnixFSStore, linkSystemResolver LinkSystemResolv
 	}
 }
 
+// UnixFSAppResolver implements an AppResolver for the UnixFS domain
 type UnixFSAppResolver struct {
 	store              UnixFSStore
 	linkSystemResolver LinkSystemResolver
 }
 
+// GetResolver attempts to resolve starting from the given root. It returns a linksystem to load blocks from
+// and a resolver for the query
 func (ufsar *UnixFSAppResolver) GetResolver(ctx context.Context, root cid.Cid) (*ipld.LinkSystem, stargate.PathResolver, error) {
 	rootCids, err := ufsar.store.RootCID(ctx, root)
 	if err != nil {
@@ -63,6 +67,7 @@ func (ufsar *UnixFSAppResolver) GetResolver(ctx context.Context, root cid.Cid) (
 	return nil, nil, totalError
 }
 
+// UnixFSResolver implements an PathResolver for the UnixFS domain
 type UnixFSResolver struct {
 	store UnixFSStore
 	root  unixfsstore.RootCID
@@ -74,6 +79,12 @@ type traversalState struct {
 	blockMetadata stargate.BlockMetadata
 }
 
+// ResolvePathSegments attempts to resolve a UnixFS path
+// On success, it resolves all paths and returns:
+// -  a stargate path message for the whole path
+// - no unresolved segments
+// - a path resolver operating at the end of the path
+// On error, all values are be nil except the error value
 func (ufsr *UnixFSResolver) ResolvePathSegments(ctx context.Context, path stargate.PathSegments) (*stargate.Path, stargate.PathSegments, stargate.PathResolver, error) {
 	state := traversalState{
 		blockMetadata: make(stargate.BlockMetadata, 0, len(path)*4),
@@ -127,6 +138,7 @@ func (ufsr *UnixFSResolver) traverseSegment(ctx context.Context, state traversal
 	return state, nil
 }
 
+// UnixFSQueryResolver implements an QueryResolver for the UnixFS domain
 type UnixFSQueryResolver struct {
 	ctx       context.Context
 	query     stargate.Query
@@ -135,6 +147,8 @@ type UnixFSQueryResolver struct {
 	fulfilled bool
 }
 
+// ResolveQuery returns a resolver to fulfill the DAG part of a UnixFS query after path resolution with the
+// given query string.
 func (ufsr *UnixFSResolver) ResolveQuery(ctx context.Context, query stargate.Query) (stargate.QueryResolver, error) {
 	return &UnixFSQueryResolver{
 		ctx:   ctx,
@@ -144,10 +158,16 @@ func (ufsr *UnixFSResolver) ResolveQuery(ctx context.Context, query stargate.Que
 	}, nil
 }
 
+// Done indicates if a UnixFS query resolution is complete. Since there is only one message for UnixFS query resolution,
+// Done is true after a single call to Next
 func (ufsqr *UnixFSQueryResolver) Done() bool {
 	return ufsqr.fulfilled
 }
 
+// Next fulfilles a UnixFS DAG query
+// For files:
+// the query parameter 'noleaves' will prevent leaves from being sent
+// the query parameter 'bytes' will narrow results to a specifc range of bytes in the UnixFS file
 func (ufsqr *UnixFSQueryResolver) Next() (*stargate.DAG, error) {
 	if ufsqr.fulfilled {
 		return nil, stargate.ErrNoMoreMessages{}
@@ -221,6 +241,9 @@ func (ufsqr *UnixFSQueryResolver) fileQuery() (*stargate.DAG, error) {
 			return nil, fmt.Errorf("incorrectly formatted byte param")
 		}
 		byteCidLayers, err := ufsqr.store.FileByteRange(ufsqr.ctx, ufsqr.root.CID, ufsqr.root.Metadata, start, end)
+		if err != nil {
+			return nil, err
+		}
 		byteCidSets = make([]map[cid.Cid]struct{}, len(byteCidLayers))
 		for i, byteCidLayer := range byteCidLayers {
 			byteCidSet := make(map[cid.Cid]struct{}, len(byteCidLayer))
@@ -230,9 +253,9 @@ func (ufsqr *UnixFSQueryResolver) fileQuery() (*stargate.DAG, error) {
 			byteCidSets[i] = byteCidSet
 		}
 	}
-	sendLeaves := false
-	if _, ok := ufsqr.query["leaves"]; ok {
-		sendLeaves = true
+	sendLeaves := true
+	if _, ok := ufsqr.query["noleaves"]; ok {
+		sendLeaves = false
 	}
 
 	totalCids := 1

@@ -7,32 +7,35 @@ import (
 	bindnoderegistry "github.com/ipld/go-ipld-prime/node/bindnode/registry"
 )
 
+// BlockStatus indicates information about what is being done with a given block in a request
 type BlockStatus string
 
 const (
-	// Present means the linked block was present on this machine, and is included
+	// BlockStatusPresent means the linked block was present on this machine, and is included
 	// in this message
 	BlockStatusPresent BlockStatus = "Present"
-	// NotSent means the linked block was present on this machine, but not sent
+	// BlockStatusNotSent means the linked block was present on this machine, but not sent
 	// - it needs to be fetched elsewhere
 	BlockStatusNotSent BlockStatus = "NotSent"
-	// Missing means I did not have the linked block, so I skipped over this part
+	// BlockStatusMissing means I did not have the linked block, so I skipped over this part
 	// of the traversal
 	BlockStatusMissing BlockStatus = "Missing"
-	// Duplicate means the linked block was encountered, but we already have traversed it
+	// BlockStatusDuplicate means the linked block was encountered, but we already have traversed it
 	// so we're not traversing it again -- the block has likely already been transmitted
 	BlockStatusDuplicate BlockStatus = "Duplicate"
 )
 
-// Metadata for each "link" in the DAG being communicated, each block gets one of
-// these and missing blocks also get one
+// BlockMetadatum is metadata for a single block
 type BlockMetadatum struct {
 	Link   cid.Cid
 	Status BlockStatus
 }
 
+// BlockMetadata is metadata for each "link" in the DAG being communicated, each block gets one of
+// these and missing blocks also get one
 type BlockMetadata []BlockMetadatum
 
+// Path is a StarGate message that provides information about resolution of a path
 type Path struct {
 	// name of this path segment
 	Segments []string
@@ -40,29 +43,33 @@ type Path struct {
 	Blocks BlockMetadata
 }
 
+// Ordering is a traversal order for transmitting blocks
 type Ordering string
 
 const (
-	// Depthfirst indicates blocks will be transmitted depth first
+	// OrderingDepthFirst indicates blocks will be transmitted depth first
 	OrderingDepthFirst Ordering = "DepthFirst"
-	// BreadthFirst indicates blocks will be breadth depth first
+	// OrderingBreadthFirst indicates blocks will be breadth depth first
 	OrderingBreadthFirst Ordering = "BreadthFirst"
 )
 
+// Path is a StarGate message that provides information about resolution of the DAG at the end of a query
 type DAG struct {
 	Ordering Ordering
 	Blocks   BlockMetadata
 }
 
+// Kind indicates whether a generic StarGate message is for a Path or a DAG
 type Kind string
 
 const (
-	// Path indicates a pathing sequence
+	// KindPath indicates a pathing sequence
 	KindPath Kind = "Path"
-	// DAG indicates a DAG block
+	// KindDAG indicates a DAG block
 	KindDAG Kind = "DAG"
 )
 
+// StarGateMessage is a complete StarGate message ahead of a block sequence
 type StarGateMessage struct {
 	Kind Kind
 	Path *Path

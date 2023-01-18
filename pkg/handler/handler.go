@@ -1,3 +1,8 @@
+/*
+Package handler implements the HTTP mechanics of sending StarGate responses
+
+Note: much of this code is cribbed from https://github.com/filecoin-project/boost/blob/main/cmd/booster-http/server.go
+*/
 package handler
 
 import (
@@ -16,11 +21,13 @@ import (
 	"github.com/ipfs/stargate/pkg/carwriter.go"
 )
 
+// Handler is a an HTTP Handler for a given StarGate AppResolver
 type Handler struct {
 	prefix      string
 	appResolver stargate.AppResolver
 }
 
+// NewHandler constructs an http Handler for given prefix + appResolver
 func NewHandler(prefix string, appResolver stargate.AppResolver) *Handler {
 	return &Handler{
 		prefix:      prefix,
@@ -59,7 +66,7 @@ func alogAt(at time.Time, l string, args ...interface{}) {
 func serveContent(w http.ResponseWriter, r *http.Request, content io.ReadSeeker) {
 	// Set the Content-Type header explicitly so that http.ServeContent doesn't
 	// try to do it implicitly
-	w.Header().Set("Content-Type", "application/piece")
+	w.Header().Set("Content-Type", "application/vnd.ipld.car+stargate")
 
 	var writer http.ResponseWriter
 
@@ -141,12 +148,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// remove prefix
 	prefix, remaining := r.URL.Path[:len(h.prefix)+2], r.URL.Path[len(h.prefix)+2:]
 	if prefix != "/"+h.prefix+"/" {
 		msg := fmt.Sprintf("incorrect prefix -- expected: %s, got: %s", "/"+h.prefix+"/", prefix)
 		writeError(w, r, http.StatusBadRequest, msg)
 		return
 	}
+	// parse root CID
 	segments := strings.Split(remaining, "/")
 	cidString, pathSegments := segments[0], segments[1:]
 	rootCid, err := cid.Parse(cidString)
@@ -155,6 +164,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, msg)
 		return
 	}
+	// create a temporary file for the response (we want to serialize the whole thing to know
+	// if it will be a success)
 	responseFile, err := os.CreateTemp("", cidString+"-")
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "error setting up response")
@@ -165,8 +176,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = responseFile.Close()
 		os.Remove(responseFile.Name())
 	}()
+
+	// write the response
 	err = carwriter.WriteCar(r.Context(), responseFile, rootCid, pathSegments, stargate.Query(r.URL.Query()), h.appResolver)
+
 	if err != nil {
+		// check for not found errors while writing response
 		var errNotFound stargate.ErrNotFound
 		if errors.As(err, &errNotFound) {
 			writeError(w, r, http.StatusNotFound, err.Error())
@@ -177,8 +192,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeError(w, r, http.StatusNotFound, err.Error())
 			return
 		}
+		// otherwise 500
 		writeError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// serve the completed response with an OK status
 	serveContent(w, r, responseFile)
 }

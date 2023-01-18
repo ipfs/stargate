@@ -20,9 +20,9 @@ import (
 
 var log = logging.Logger("stargate-carwriter")
 
-const BufferSize = (1 << 20) * 16
-
+// WriteCar traverses a StarGate query using a resolver to write StarGate CAR response to the given writer
 func WriteCar(ctx context.Context, w io.Writer, root cid.Cid, paths stargate.PathSegments, query stargate.Query, appResolver stargate.AppResolver) error {
+	// write CAR header
 	header := car.CarHeader{
 		Version: 1,
 		Roots:   []cid.Cid{root},
@@ -31,11 +31,12 @@ func WriteCar(ctx context.Context, w io.Writer, root cid.Cid, paths stargate.Pat
 	if err != nil {
 		return fmt.Errorf("Writing car header: %w", err)
 	}
+	// resolve root
 	lsys, resolver, err := appResolver.GetResolver(ctx, root)
 	if err != nil {
 		return fmt.Errorf("Error loading root resolver: %w", err)
 	}
-	fmt.Println(paths)
+	// resolve all path segments
 	for len(paths) != 0 {
 		var path *stargate.Path
 		path, paths, resolver, err = resolver.ResolvePathSegments(ctx, paths)
@@ -50,6 +51,7 @@ func WriteCar(ctx context.Context, w io.Writer, root cid.Cid, paths stargate.Pat
 			return fmt.Errorf("Encoding stargate message and blocks: %w", err)
 		}
 	}
+	// resolve query
 	queryResolver, err := resolver.ResolveQuery(ctx, query)
 	if err != nil {
 		return fmt.Errorf("Resolving Query: %w", err)
@@ -74,6 +76,7 @@ type bytesReader interface {
 	Bytes() []byte
 }
 
+// writeStarGateMessageAndBlocks serializes a StarGate message and its associate blocks
 func writeStarGateMessageAndBlocks(ctx context.Context, w io.Writer, msg stargate.StarGateMessage, lsys *ipld.LinkSystem) error {
 	raw, err := stargate.BindnodeRegistry.TypeToBytes(&msg, dagcbor.Encode)
 	if err != nil {

@@ -7,11 +7,16 @@ import (
 	"github.com/ipld/go-ipld-prime"
 )
 
+// Query is a URL query string to pass into stargate
 type Query map[string][]string
 
+// PathSegments are the path segments of a URL
 type PathSegments []string
 
+// AppResolver finds the root of a dag and returns an associated blockstore to use serving the request
 type AppResolver interface {
+	// GetResolver attempts to resolve starting from the given root. It returns a linksystem to load blocks from
+	// and a resolver for the query
 	GetResolver(ctx context.Context, root cid.Cid) (*ipld.LinkSystem, PathResolver, error)
 }
 

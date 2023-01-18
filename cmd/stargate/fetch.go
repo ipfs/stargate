@@ -28,6 +28,8 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// TODO: This command doesn't work yet, nor does it verify data
+
 var fetchCmd = &cli.Command{
 	Name:   "fetch",
 	Usage:  "Get something from the stargate",

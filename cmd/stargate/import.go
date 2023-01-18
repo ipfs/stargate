@@ -138,7 +138,7 @@ func indexImport(ctx context.Context, carFileName string, db *sql.SQLUnixFSStore
 
 	roots, err := traversal.DiscoverRoots(ctx, allKeys, &lsys)
 	if err != nil {
-		return fmt.Errorf("Discovering roots: %w", roots)
+		return fmt.Errorf("Discovering roots: %w", err)
 	}
 
 	for _, root := range roots {

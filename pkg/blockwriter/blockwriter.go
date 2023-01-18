@@ -1,3 +1,10 @@
+/*
+Package blockwriter is not currently used, but it's useful code we may need
+
+# It maintains a buffered queue for writing blocks
+
+TODO: Delete when confirmed not to be needed
+*/
 package blockwriter
 
 import (
