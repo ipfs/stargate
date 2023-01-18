@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/stargate/internal/testutil"
+	"github.com/ipfs/stargate/pkg/unixfsstore"
 	ufssql "github.com/ipfs/stargate/pkg/unixfsstore/sql"
 	"github.com/stretchr/testify/require"
 )
@@ -21,6 +22,7 @@ func TestDirLinksDB(t *testing.T) {
 
 	rootCid := testutil.GenerateCid()
 	path1Cids := testutil.GenerateCids(3)
+	traversedPath1Cids := make([]unixfsstore.TraversedCID, 0, 3)
 	for i, c := range path1Cids {
 		err := ufssql.InsertDirLink(ctx, sqldb, &ufssql.DirLink{
 			RootCID:  rootCid,
@@ -31,9 +33,11 @@ func TestDirLinksDB(t *testing.T) {
 			SubPath:  "path1",
 		})
 		req.NoError(err)
+		traversedPath1Cids = append(traversedPath1Cids, unixfsstore.TraversedCID{c, i == len(path1Cids)-1})
 	}
 
 	path2Cids := testutil.GenerateCids(3)
+	traversedPath2Cids := make([]unixfsstore.TraversedCID, 0, 3)
 	for i, c := range path2Cids {
 		err := ufssql.InsertDirLink(ctx, sqldb, &ufssql.DirLink{
 			RootCID:  rootCid,
@@ -44,6 +48,7 @@ func TestDirLinksDB(t *testing.T) {
 			SubPath:  "path2",
 		})
 		req.NoError(err)
+		traversedPath2Cids = append(traversedPath2Cids, unixfsstore.TraversedCID{c, i == len(path2Cids)-1})
 	}
 
 	// insert a 3rd path, with some non-unique CIDs
@@ -115,10 +120,10 @@ func TestDirLinksDB(t *testing.T) {
 	// test ls
 	rootCidsAll, err := ufssql.DirLs(ctx, sqldb, rootCid, []byte("orange"))
 	req.NoError(err)
-	req.Equal([][]cid.Cid{
-		{path1Cids[0], path2Cids[0]},
-		{path1Cids[1], path2Cids[1], path2Cids[0]},
-		{path1Cids[2], path2Cids[2], path3Leaf},
+	req.Equal([][]unixfsstore.TraversedCID{
+		{traversedPath1Cids[0], traversedPath2Cids[0]},
+		{traversedPath1Cids[1], traversedPath2Cids[1], traversedPath2Cids[0]},
+		{traversedPath1Cids[2], traversedPath2Cids[2], {path3Leaf, true}},
 	},
 		rootCidsAll)
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ipfs/go-unixfsnode/data"
 	"github.com/ipfs/stargate/internal/testutil"
+	"github.com/ipfs/stargate/pkg/unixfsstore"
 	"github.com/ipfs/stargate/pkg/unixfsstore/sql"
 	"github.com/stretchr/testify/require"
 )
@@ -18,39 +19,69 @@ func TestRootCIDSDb(t *testing.T) {
 	req.NoError(sql.CreateTables(ctx, sqldb))
 
 	rootCid := testutil.GenerateCid()
-	err := sql.InsertRootCID(ctx, sqldb, rootCid, data.Data_File, []byte("apples"))
+	err := sql.InsertRootCID(ctx, sqldb, unixfsstore.RootCID{
+		CID:      rootCid,
+		Kind:     data.Data_File,
+		Metadata: []byte("apples"),
+	})
 	req.NoError(err)
-	err = sql.InsertRootCID(ctx, sqldb, rootCid, data.Data_File, nil)
+	err = sql.InsertRootCID(ctx, sqldb, unixfsstore.RootCID{
+		CID:      rootCid,
+		Kind:     data.Data_File,
+		Metadata: nil,
+	})
 	req.NoError(err)
 	otherRootCid := testutil.GenerateCid()
-	err = sql.InsertRootCID(ctx, sqldb, otherRootCid, data.Data_HAMTShard, []byte("oranges"))
+	err = sql.InsertRootCID(ctx, sqldb, unixfsstore.RootCID{
+		CID:      otherRootCid,
+		Kind:     data.Data_HAMTShard,
+		Metadata: []byte("oranges"),
+	})
 	req.NoError(err)
 
 	missingRootCid := testutil.GenerateCid()
 
-	has, kind, err := sql.RootCID(ctx, sqldb, rootCid, []byte("apples"))
+	rootCids, err := sql.RootCID(ctx, sqldb, rootCid)
 	req.NoError(err)
-	req.True(has)
-	req.Equal(data.Data_File, kind)
+	req.ElementsMatch([]unixfsstore.RootCID{
+		{
+			CID:      rootCid,
+			Kind:     data.Data_File,
+			Metadata: nil,
+		},
+		{
+			CID:      rootCid,
+			Kind:     data.Data_File,
+			Metadata: []byte("apples"),
+		},
+	}, rootCids)
 
-	has, kind, err = sql.RootCID(ctx, sqldb, rootCid, nil)
+	returnedRootCid, err := sql.RootCIDWithMetadata(ctx, sqldb, rootCid, []byte("apples"))
 	req.NoError(err)
-	req.True(has)
-	req.Equal(data.Data_File, kind)
+	req.Equal(&unixfsstore.RootCID{
+		CID:      rootCid,
+		Kind:     data.Data_File,
+		Metadata: []byte("apples"),
+	}, returnedRootCid)
 
-	has, kind, err = sql.RootCID(ctx, sqldb, otherRootCid, []byte("oranges"))
+	returnedRootCid, err = sql.RootCIDWithMetadata(ctx, sqldb, rootCid, nil)
 	req.NoError(err)
-	req.True(has)
-	req.Equal(data.Data_HAMTShard, kind)
-
-	// must match metadata
-	has, kind, err = sql.RootCID(ctx, sqldb, rootCid, []byte("oranges"))
+	req.Equal(&unixfsstore.RootCID{
+		CID:      rootCid,
+		Kind:     data.Data_File,
+		Metadata: nil,
+	}, returnedRootCid)
+	rootCids, err = sql.RootCID(ctx, sqldb, otherRootCid)
 	req.NoError(err)
-	req.False(has)
+	req.ElementsMatch([]unixfsstore.RootCID{
+		{
+			CID:      otherRootCid,
+			Kind:     data.Data_HAMTShard,
+			Metadata: []byte("oranges"),
+		},
+	}, rootCids)
 
-	// must contain cid
-	has, kind, err = sql.RootCID(ctx, sqldb, missingRootCid, []byte("apples"))
+	missingRootCids, err := sql.RootCID(ctx, sqldb, missingRootCid)
+	req.Empty(missingRootCids)
 	req.NoError(err)
-	req.False(has)
-
 }

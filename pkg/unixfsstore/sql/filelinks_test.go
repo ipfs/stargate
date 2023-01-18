@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/stargate/internal/testutil"
+	"github.com/ipfs/stargate/pkg/unixfsstore"
 	"github.com/ipfs/stargate/pkg/unixfsstore/sql"
 	"github.com/stretchr/testify/require"
 )
@@ -19,6 +19,7 @@ func TestFileLinksDB(t *testing.T) {
 
 	rootCid := testutil.GenerateCid()
 	intermediates := testutil.GenerateCids(10)
+	traversedIntermediates := make([]unixfsstore.TraversedCID, 0, 10)
 	for i, c := range intermediates {
 		err := sql.InsertFileLink(ctx, sqldb, &sql.FileLink{
 			RootCID:  rootCid,
@@ -30,9 +31,11 @@ func TestFileLinksDB(t *testing.T) {
 			ByteMax:  uint64(i+1) * (1 << 22) * 10,
 		})
 		req.NoError(err)
+		traversedIntermediates = append(traversedIntermediates, unixfsstore.TraversedCID{c, false})
 	}
 
 	leaves := testutil.GenerateCids(100)
+	traversedLeaves := make([]unixfsstore.TraversedCID, 0, 100)
 	for i, c := range leaves {
 		err := sql.InsertFileLink(ctx, sqldb, &sql.FileLink{
 			RootCID:  rootCid,
@@ -44,10 +47,12 @@ func TestFileLinksDB(t *testing.T) {
 			ByteMax:  uint64(i+1) * (1 << 22),
 		})
 		req.NoError(err)
+		traversedLeaves = append(traversedLeaves, unixfsstore.TraversedCID{c, true})
 	}
 
 	otherRootCid := testutil.GenerateCid()
 	otherIntermediates := testutil.GenerateCids(10)
+	otherTraversedIntermediates := make([]unixfsstore.TraversedCID, 0, 10)
 	for i, c := range otherIntermediates {
 		err := sql.InsertFileLink(ctx, sqldb, &sql.FileLink{
 			RootCID:  otherRootCid,
@@ -59,9 +64,11 @@ func TestFileLinksDB(t *testing.T) {
 			ByteMax:  uint64(i+1) * (1 << 22) * 10,
 		})
 		req.NoError(err)
+		otherTraversedIntermediates = append(otherTraversedIntermediates, unixfsstore.TraversedCID{c, false})
 	}
 
 	otherLeaves := testutil.GenerateCids(100)
+	otherTraversedLeaves := make([]unixfsstore.TraversedCID, 0, 100)
 	for i, c := range otherLeaves {
 		err := sql.InsertFileLink(ctx, sqldb, &sql.FileLink{
 			RootCID:  otherRootCid,
@@ -73,31 +80,33 @@ func TestFileLinksDB(t *testing.T) {
 			ByteMax:  uint64(i+1) * (1 << 22),
 		})
 		req.NoError(err)
+		otherTraversedLeaves = append(otherTraversedLeaves, unixfsstore.TraversedCID{c, true})
 	}
 
 	// test full
 	rootAll, err := sql.FileAll(ctx, sqldb, rootCid, []byte("orange"))
 	req.NoError(err)
-	req.Equal([][]cid.Cid{
-		intermediates,
-		leaves,
+	req.Equal([][]unixfsstore.TraversedCID{
+		traversedIntermediates,
+		traversedLeaves,
 	},
 		rootAll)
 
 	otherRootAll, err := sql.FileAll(ctx, sqldb, otherRootCid, nil)
 	req.NoError(err)
-	req.Equal([][]cid.Cid{
-		otherIntermediates,
-		otherLeaves,
+	req.Equal([][]unixfsstore.TraversedCID{
+		otherTraversedIntermediates,
+		otherTraversedLeaves,
 	},
 		otherRootAll)
 
 	// test byte range
 	rootRange, err := sql.FileByteRange(ctx, sqldb, rootCid, []byte("orange"), 10*(1<<22), 21*(1<<22))
 	req.NoError(err)
-	req.Equal([][]cid.Cid{
-		{intermediates[1], intermediates[2]},
-		leaves[10:21],
+
+	req.Equal([][]unixfsstore.TraversedCID{
+		{traversedIntermediates[1], traversedIntermediates[2]},
+		traversedLeaves[10:21],
 	},
 		rootRange)
 

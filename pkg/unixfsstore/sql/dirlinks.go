@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/stargate/pkg/unixfsstore"
 	"github.com/ipfs/stargate/pkg/unixfsstore/sql/fielddef"
 )
 
@@ -57,26 +58,27 @@ func DirPath(ctx context.Context, db Transactable, root cid.Cid, metadata fieldd
 	return cids, nil
 }
 
-var lsQuery string = "SELECT DISTINCT CID, Depth FROM DirLinks WHERE RootCID = ? AND Metadata = ? ORDER BY Depth ASC"
+var lsQuery string = "SELECT DISTINCT CID, Depth, Leaf FROM DirLinks WHERE RootCID = ? AND Metadata = ? ORDER BY Depth ASC"
 
-func DirLs(ctx context.Context, db Transactable, root cid.Cid, metadata fielddef.SqlBytes) ([][]cid.Cid, error) {
+func DirLs(ctx context.Context, db Transactable, root cid.Cid, metadata fielddef.SqlBytes) ([][]unixfsstore.TraversedCID, error) {
 	rows, err := db.QueryContext(ctx, lsQuery, root.Bytes(), metadata.Bytes())
 	if err != nil {
 		return nil, err
 	}
-	cidDepths := make([][]cid.Cid, 0, 16)
+	cidDepths := make([][]unixfsstore.TraversedCID, 0, 16)
 	for rows.Next() {
-		var c cid.Cid
+		var c unixfsstore.TraversedCID
 		var depth uint64
-		err := fielddef.Scan(rows, []string{"CID", "Depth"}, map[string]fielddef.FieldDefinition{
-			"CID":   &fielddef.CidFieldDef{F: &c},
+		err := fielddef.Scan(rows, []string{"CID", "Depth", "Leaf"}, map[string]fielddef.FieldDefinition{
+			"CID":   &fielddef.CidFieldDef{F: &c.CID},
 			"Depth": &fielddef.FieldDef{F: &depth},
+			"Leaf":  &fielddef.FieldDef{F: &c.IsLeaf},
 		})
 		if err != nil {
 			return nil, err
 		}
 		for uint64(len(cidDepths)) <= depth {
-			cidDepths = append(cidDepths, make([]cid.Cid, 0, 16))
+			cidDepths = append(cidDepths, make([]unixfsstore.TraversedCID, 0, 16))
 		}
 		cidDepths[depth] = append(cidDepths[depth], c)
 	}

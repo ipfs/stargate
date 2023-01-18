@@ -7,7 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var log = logging.Logger("booster")
+var log = logging.Logger("stargate")
 
 var FlagRepo = &cli.StringFlag{
 	Name:    "repo",

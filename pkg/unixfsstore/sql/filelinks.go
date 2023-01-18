@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/stargate/pkg/unixfsstore"
 	"github.com/ipfs/stargate/pkg/unixfsstore/sql/fielddef"
 )
 
@@ -36,24 +37,25 @@ func fileLinkFields(fileLink *FileLink) map[string]fielddef.FieldDefinition {
 	}
 }
 
-func fileLinkQuery(ctx context.Context, db Transactable, whereClause string, whereParams ...any) ([][]cid.Cid, error) {
+func fileLinkQuery(ctx context.Context, db Transactable, whereClause string, whereParams ...any) ([][]unixfsstore.TraversedCID, error) {
 	rows, err := db.QueryContext(ctx, fmt.Sprintf(fileQuery, whereClause), whereParams...)
 	if err != nil {
 		return nil, err
 	}
-	cidDepths := make([][]cid.Cid, 0, 16)
+	cidDepths := make([][]unixfsstore.TraversedCID, 0, 16)
 	for rows.Next() {
-		var c cid.Cid
+		var c unixfsstore.TraversedCID
 		var depth uint64
-		err := fielddef.Scan(rows, []string{"CID", "Depth"}, map[string]fielddef.FieldDefinition{
-			"CID":   &fielddef.CidFieldDef{F: &c},
+		err := fielddef.Scan(rows, []string{"CID", "Depth", "Leaf"}, map[string]fielddef.FieldDefinition{
+			"CID":   &fielddef.CidFieldDef{F: &c.CID},
+			"Leaf":  &fielddef.FieldDef{F: &c.IsLeaf},
 			"Depth": &fielddef.FieldDef{F: &depth},
 		})
 		if err != nil {
 			return nil, err
 		}
 		for uint64(len(cidDepths)) <= depth {
-			cidDepths = append(cidDepths, make([]cid.Cid, 0, 16))
+			cidDepths = append(cidDepths, make([]unixfsstore.TraversedCID, 0, 16))
 		}
 		cidDepths[depth] = append(cidDepths[depth], c)
 	}
@@ -63,12 +65,12 @@ func fileLinkQuery(ctx context.Context, db Transactable, whereClause string, whe
 	return cidDepths, nil
 }
 
-func FileByteRange(ctx context.Context, db Transactable, root cid.Cid, metadata fielddef.SqlBytes, min uint64, max uint64) ([][]cid.Cid, error) {
+func FileByteRange(ctx context.Context, db Transactable, root cid.Cid, metadata fielddef.SqlBytes, min uint64, max uint64) ([][]unixfsstore.TraversedCID, error) {
 	return fileLinkQuery(ctx, db, "WHERE RootCID = ? AND Metadata = ? AND ByteMin < ? AND ByteMax > ?", root.Bytes(), metadata.Bytes(), max, min)
 }
 
-var fileQuery string = "SELECT DISTINCT CID, Depth FROM FileLinks %s ORDER BY Depth ASC"
+var fileQuery string = "SELECT DISTINCT CID, Depth, Leaf FROM FileLinks %s ORDER BY Depth ASC"
 
-func FileAll(ctx context.Context, db Transactable, root cid.Cid, metadata fielddef.SqlBytes) ([][]cid.Cid, error) {
+func FileAll(ctx context.Context, db Transactable, root cid.Cid, metadata fielddef.SqlBytes) ([][]unixfsstore.TraversedCID, error) {
 	return fileLinkQuery(ctx, db, "WHERE RootCID = ? AND Metadata = ?", root.Bytes(), metadata.Bytes())
 }

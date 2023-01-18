@@ -86,6 +86,10 @@ func (fd *BytesFieldDef) Marshall() (interface{}, error) {
 }
 
 func (fd *BytesFieldDef) Unmarshall() error {
+	if len(fd.Marshalled) == 0 && fd.Marshalled != nil {
+		*fd.F = nil
+		return nil
+	}
 	*fd.F = fd.Marshalled
 	return nil
 }

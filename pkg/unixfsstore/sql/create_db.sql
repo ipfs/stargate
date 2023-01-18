@@ -30,3 +30,4 @@ CREATE INDEX IF NOT EXISTS index_dir_links_root_cid on DirLinks(RootCID, Metadat
 CREATE INDEX IF NOT EXISTS index_dir_links_root_cid_sub_path on DirLinks(RootCID, Metadata, SubPath);
 CREATE INDEX IF NOT EXISTS index_file_links_root_cid on FileLinks(RootCID, Metadata);
 CREATE INDEX IF NOT EXISTS index_file_links_root_cid_byte_min_max on FileLinks(RootCID, Metadata, ByteMin, ByteMax);
+CREATE INDEX IF NOT EXISTS index_root_cids_cid on RootCIDS(CID)

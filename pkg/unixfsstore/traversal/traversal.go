@@ -12,6 +12,7 @@ import (
 	dagpb "github.com/ipld/go-codec-dagpb"
 	"github.com/ipld/go-ipld-prime"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/multiformats/go-multicodec"
 )
 
 type UnixFSVisitor interface {
@@ -53,6 +54,9 @@ var interateFuncs = map[int64]interateFunc{
 }
 
 func IterateUnixFSNode(ctx context.Context, root cid.Cid, lsys *ipld.LinkSystem, visitor UnixFSVisitor) error {
+	if root.Prefix().Codec == uint64(multicodec.Raw) {
+		return visitor.OnRoot(ctx, root, data.Data_Raw)
+	}
 	nd, err := lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{root}, dagpb.Type.PBNode)
 	if err != nil {
 		return err

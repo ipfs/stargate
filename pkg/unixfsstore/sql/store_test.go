@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-unixfsnode/data"
 	"github.com/ipfs/go-unixfsnode/data/builder"
+	"github.com/ipfs/stargate/pkg/unixfsstore"
 	"github.com/ipfs/stargate/pkg/unixfsstore/sql"
 	dagpb "github.com/ipld/go-codec-dagpb"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -44,30 +45,50 @@ func TestAdd(t *testing.T) {
 	err = db.AddRootRecursive(ctx, recursiveFolderLink.(cidlink.Link).Cid, []byte("apples"), &ls)
 	req.NoError(err)
 
-	has, kind, err := db.RootCID(ctx, recursiveFolderLink.(cidlink.Link).Cid, []byte("apples"))
+	rootCids, err := db.RootCID(ctx, recursiveFolderLink.(cidlink.Link).Cid)
 	req.NoError(err)
-	req.True(has)
-	req.Equal(data.Data_Directory, kind)
+	req.ElementsMatch([]unixfsstore.RootCID{
+		{
+			CID:      recursiveFolderLink.(cidlink.Link).Cid,
+			Kind:     data.Data_Directory,
+			Metadata: []byte("apples"),
+		},
+	}, rootCids)
 
+	rootCid, err := db.RootCIDWithMetadata(ctx, recursiveFolderLink.(cidlink.Link).Cid, []byte("apples"))
+	req.NoError(err)
+	req.Equal(&unixfsstore.RootCID{
+		CID:      recursiveFolderLink.(cidlink.Link).Cid,
+		Kind:     data.Data_Directory,
+		Metadata: []byte("apples"),
+	}, rootCid)
 	rootLinks, err := db.DirLs(ctx, recursiveFolderLink.(cidlink.Link).Cid, []byte("apples"))
 	req.NoError(err)
-	req.Equal([][]cid.Cid{
-		{subFolderLink.(cidlink.Link).Cid},
+	req.Equal([][]unixfsstore.TraversedCID{
+		{
+			{subFolderLink.(cidlink.Link).Cid, true},
+		},
 	}, rootLinks)
 
 	rootPath, err := db.DirPath(ctx, recursiveFolderLink.(cidlink.Link).Cid, []byte("apples"), "subfolder")
 	req.NoError(err)
 	req.Equal([]cid.Cid{subFolderLink.(cidlink.Link).Cid}, rootPath)
 
-	has, kind, err = db.RootCID(ctx, subFolderLink.(cidlink.Link).Cid, []byte("apples"))
+	subFolderCids, err := db.RootCID(ctx, subFolderLink.(cidlink.Link).Cid)
 	req.NoError(err)
-	req.True(has)
-	req.Equal(data.Data_Directory, kind)
+	req.ElementsMatch([]unixfsstore.RootCID{
+		{
+			CID:      subFolderLink.(cidlink.Link).Cid,
+			Kind:     data.Data_Directory,
+			Metadata: []byte("apples"),
+		},
+	}, subFolderCids)
+	req.NoError(err)
 
 	subFolderLinks, err := db.DirLs(ctx, subFolderLink.(cidlink.Link).Cid, []byte("apples"))
 	req.NoError(err)
-	req.Equal([][]cid.Cid{
-		{fileLink},
+	req.Equal([][]unixfsstore.TraversedCID{
+		{{fileLink, true}},
 	}, subFolderLinks)
 
 	subFolderPath, err := db.DirPath(ctx, subFolderLink.(cidlink.Link).Cid, []byte("apples"), "file.txt")

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/stargate/pkg/unixfsstore"
 	"github.com/ipfs/stargate/pkg/unixfsstore/traversal"
 	"github.com/ipld/go-ipld-prime"
 	_ "github.com/mattn/go-sqlite3"
@@ -45,7 +46,7 @@ func (ufsv *unixFSVisitor) OnFileRange(ctx context.Context, root cid.Cid, cid ci
 }
 
 func (ufsv *unixFSVisitor) OnRoot(ctx context.Context, root cid.Cid, kind int64) error {
-	return InsertRootCID(ctx, ufsv.db, root, kind, ufsv.metadata)
+	return InsertRootCID(ctx, ufsv.db, unixfsstore.RootCID{CID: root, Kind: kind, Metadata: ufsv.metadata})
 }
 
 type SQLUnixFSStore struct {
@@ -71,7 +72,7 @@ func (s *SQLUnixFSStore) AddRootRecursive(ctx context.Context, root cid.Cid, met
 	})
 }
 
-func (s *SQLUnixFSStore) DirLs(ctx context.Context, root cid.Cid, metadata []byte) ([][]cid.Cid, error) {
+func (s *SQLUnixFSStore) DirLs(ctx context.Context, root cid.Cid, metadata []byte) ([][]unixfsstore.TraversedCID, error) {
 	return DirLs(ctx, s.db, root, metadata)
 }
 
@@ -79,16 +80,20 @@ func (s *SQLUnixFSStore) DirPath(ctx context.Context, root cid.Cid, metadata []b
 	return DirPath(ctx, s.db, root, metadata, path)
 }
 
-func (s *SQLUnixFSStore) FileAll(ctx context.Context, root cid.Cid, metadata []byte) ([][]cid.Cid, error) {
+func (s *SQLUnixFSStore) FileAll(ctx context.Context, root cid.Cid, metadata []byte) ([][]unixfsstore.TraversedCID, error) {
 	return FileAll(ctx, s.db, root, metadata)
 }
 
-func (s *SQLUnixFSStore) FileByteRange(ctx context.Context, root cid.Cid, metadata []byte, byteMin uint64, byteMax uint64) ([][]cid.Cid, error) {
+func (s *SQLUnixFSStore) FileByteRange(ctx context.Context, root cid.Cid, metadata []byte, byteMin uint64, byteMax uint64) ([][]unixfsstore.TraversedCID, error) {
 	return FileByteRange(ctx, s.db, root, metadata, byteMin, byteMax)
 }
 
-func (s *SQLUnixFSStore) RootCID(ctx context.Context, root cid.Cid, metadata []byte) (bool, int64, error) {
-	return RootCID(ctx, s.db, root, metadata)
+func (s *SQLUnixFSStore) RootCID(ctx context.Context, root cid.Cid) ([]unixfsstore.RootCID, error) {
+	return RootCID(ctx, s.db, root)
+}
+
+func (s *SQLUnixFSStore) RootCIDWithMetadata(ctx context.Context, root cid.Cid, metadata []byte) (*unixfsstore.RootCID, error) {
+	return RootCIDWithMetadata(ctx, s.db, root, metadata)
 }
 
 func withTransaction(ctx context.Context, db *sql.DB, f func(*sql.Tx) error) (err error) {
