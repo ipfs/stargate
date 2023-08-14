@@ -3,7 +3,6 @@ package stores
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -112,7 +111,7 @@ func dagToNormalFile(t *testing.T, ctx context.Context, root cid.Cid, bs bstore.
 		return nil, err
 	}
 
-	finalBytes, err := ioutil.ReadAll(outputF)
+	finalBytes, err := io.ReadAll(outputF)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +135,7 @@ func createFile(t *testing.T, rseed int64, size int64) (path string, contents []
 
 	_, err = file.Seek(0, io.SeekStart)
 	require.NoError(t, err)
-	bz, err := ioutil.ReadAll(file)
+	bz, err := io.ReadAll(file)
 	require.NoError(t, err)
 	require.NoError(t, file.Close())
 
