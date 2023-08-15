@@ -62,11 +62,11 @@ var importCmd = &cli.Command{
 		}
 		newLocale := filepath.Join(carPath(repoDir), root.String()+".car")
 		if fileExists(newLocale) {
-			return errors.New("File or directory already imported")
+			return errors.New("file or directory already imported")
 		}
 		err = os.Rename(carFileName, newLocale)
 		if err != nil {
-			return fmt.Errorf("Renaming file: %w", err)
+			return fmt.Errorf("renaming file: %w", err)
 		}
 		carFileName = newLocale
 
@@ -128,23 +128,23 @@ func indexImport(ctx context.Context, carFileName string, db *sql.SQLUnixFSStore
 
 	bs, err := stores.ReadOnlyFilestore(carFileName)
 	if err != nil {
-		return fmt.Errorf("Reopening file store")
+		return fmt.Errorf("reopening file store")
 	}
 	allKeys, err := bs.AllKeysChan(ctx)
 	if err != nil {
-		return fmt.Errorf("Fetching all block keys")
+		return fmt.Errorf("fetching all block keys")
 	}
 	lsys := storeutil.LinkSystemForBlockstore(bs)
 
 	roots, err := traversal.DiscoverRoots(ctx, allKeys, &lsys)
 	if err != nil {
-		return fmt.Errorf("Discovering roots: %w", err)
+		return fmt.Errorf("discovering roots: %w", err)
 	}
 
 	for _, root := range roots {
 		err := db.AddRoot(ctx, root, []byte(carFileName), &lsys)
 		if err != nil {
-			return fmt.Errorf("Adding root to index: %w", err)
+			return fmt.Errorf("adding root to index: %w", err)
 		}
 	}
 	return bs.Close()

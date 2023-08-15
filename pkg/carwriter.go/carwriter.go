@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 	stargate "github.com/ipfs/stargate/pkg"
 	"github.com/ipld/go-car"
 	"github.com/ipld/go-car/util"
@@ -18,8 +17,6 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
-var log = logging.Logger("stargate-carwriter")
-
 // WriteCar traverses a StarGate query using a resolver to write StarGate CAR response to the given writer
 func WriteCar(ctx context.Context, w io.Writer, root cid.Cid, paths stargate.PathSegments, query stargate.Query, appResolver stargate.AppResolver) error {
 	// write CAR header
@@ -29,44 +26,44 @@ func WriteCar(ctx context.Context, w io.Writer, root cid.Cid, paths stargate.Pat
 	}
 	err := car.WriteHeader(&header, w)
 	if err != nil {
-		return fmt.Errorf("Writing car header: %w", err)
+		return fmt.Errorf("writing car header: %w", err)
 	}
 	// resolve root
 	lsys, resolver, err := appResolver.GetResolver(ctx, root)
 	if err != nil {
-		return fmt.Errorf("Error loading root resolver: %w", err)
+		return fmt.Errorf("error loading root resolver: %w", err)
 	}
 	// resolve all path segments
 	for len(paths) != 0 {
 		var path *stargate.Path
 		path, paths, resolver, err = resolver.ResolvePathSegments(ctx, paths)
 		if err != nil {
-			return fmt.Errorf("Resolving path segments: %w", err)
+			return fmt.Errorf("resolving path segments: %w", err)
 		}
 		err = writeStarGateMessageAndBlocks(ctx, w, stargate.StarGateMessage{
 			Kind: stargate.KindPath,
 			Path: path,
 		}, lsys)
 		if err != nil {
-			return fmt.Errorf("Encoding stargate message and blocks: %w", err)
+			return fmt.Errorf("encoding stargate message and blocks: %w", err)
 		}
 	}
 	// resolve query
 	queryResolver, err := resolver.ResolveQuery(ctx, query)
 	if err != nil {
-		return fmt.Errorf("Resolving Query: %w", err)
+		return fmt.Errorf("resolving Query: %w", err)
 	}
 	for !queryResolver.Done() {
 		dag, err := queryResolver.Next()
 		if err != nil {
-			return fmt.Errorf("Resolving Query Step: %w", err)
+			return fmt.Errorf("resolving Query Step: %w", err)
 		}
 		err = writeStarGateMessageAndBlocks(ctx, w, stargate.StarGateMessage{
 			Kind: stargate.KindDAG,
 			DAG:  dag,
 		}, lsys)
 		if err != nil {
-			return fmt.Errorf("Encoding stargate message and blocks: %w", err)
+			return fmt.Errorf("encoding stargate message and blocks: %w", err)
 		}
 	}
 	return nil

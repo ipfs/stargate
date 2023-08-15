@@ -104,9 +104,7 @@ func iterateHAMTDirLinks(ctx context.Context, root cid.Cid, substrate dagpb.PBNo
 				name := st.transformNameNode(next.FieldName().Must())
 				onPathCids := make([]cid.Cid, 0, len(cidsSoFar)+1)
 				// copy array before handing off, so further modifications do not affect result
-				for _, c := range cidsSoFar {
-					onPathCids = append(onPathCids, c)
-				}
+				onPathCids = append(onPathCids, cidsSoFar...)
 				onPathCids = append(onPathCids, next.FieldHash().Link().(cidlink.Link).Cid)
 				if err := visitor.OnPath(ctx, root, name.String(), onPathCids); err != nil {
 					return err
@@ -115,6 +113,9 @@ func iterateHAMTDirLinks(ctx context.Context, root cid.Cid, substrate dagpb.PBNo
 			continue
 		}
 		nd, err := lsys.Load(ipld.LinkContext{Ctx: ctx}, next.FieldHash().Link(), dagpb.Type.PBNode)
+		if err != nil {
+			return err
+		}
 
 		pbnd, ok := nd.(dagpb.PBNode)
 		if !ok {
