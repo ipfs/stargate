@@ -32,7 +32,7 @@ func DiscoverRoots(ctx context.Context, incoming <-chan cid.Cid, ls *linking.Lin
 		var nonRootChildren []cid.Cid
 		switch multicodec.Code(next.Type()) {
 		case multicodec.DagPb:
-			nd, err := ls.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{next}, dagpb.Type.PBNode)
+			nd, err := ls.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: next}, dagpb.Type.PBNode)
 			if err != nil {
 				return nil, fmt.Errorf("malformed blockstore cid %s: %w", next.String(), err)
 			}

@@ -66,7 +66,7 @@ func TestAdd(t *testing.T) {
 	req.NoError(err)
 	req.Equal([][]unixfsstore.TraversedCID{
 		{
-			{subFolderLink.(cidlink.Link).Cid, true},
+			{CID: subFolderLink.(cidlink.Link).Cid, IsLeaf: true},
 		},
 	}, rootLinks)
 
@@ -88,7 +88,7 @@ func TestAdd(t *testing.T) {
 	subFolderLinks, err := db.DirLs(ctx, subFolderLink.(cidlink.Link).Cid, []byte("apples"))
 	req.NoError(err)
 	req.Equal([][]unixfsstore.TraversedCID{
-		{{fileLink, true}},
+		{{CID: fileLink, IsLeaf: true}},
 	}, subFolderLinks)
 
 	subFolderPath, err := db.DirPath(ctx, subFolderLink.(cidlink.Link).Cid, []byte("apples"), "file.txt")

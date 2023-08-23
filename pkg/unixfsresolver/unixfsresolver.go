@@ -108,7 +108,7 @@ func (ufsr *UnixFSResolver) ResolvePathSegments(ctx context.Context, path starga
 func (ufsr *UnixFSResolver) traverseSegment(ctx context.Context, state traversalState, segment string) (traversalState, error) {
 	// reject resolution for anything that isn't a directory
 	if state.root.Kind != data.Data_Directory && state.root.Kind != data.Data_HAMTShard {
-		return traversalState{}, stargate.ErrPathError{state.root.CID, state.currentPath, errors.New("cannot path into a file, must be a directory")}
+		return traversalState{}, stargate.ErrPathError{Cid: state.root.CID, Path: state.currentPath, Err: errors.New("cannot path into a file, must be a directory")}
 	}
 	// guestimate a maximum size for the path factoring hamts
 	pathCids, err := ufsr.store.DirPath(ctx, state.root.CID, state.root.Metadata, segment)
@@ -116,7 +116,7 @@ func (ufsr *UnixFSResolver) traverseSegment(ctx context.Context, state traversal
 		return traversalState{}, err
 	}
 	if len(pathCids) == 0 {
-		return traversalState{}, stargate.ErrPathError{state.root.CID, state.currentPath, fmt.Errorf("no file or folder %s", segment)}
+		return traversalState{}, stargate.ErrPathError{Cid: state.root.CID, Path: state.currentPath, Err: fmt.Errorf("no file or folder %s", segment)}
 	}
 	for _, pathCid := range pathCids[:len(pathCids)-1] {
 		state.blockMetadata = append(state.blockMetadata, stargate.BlockMetadatum{

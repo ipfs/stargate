@@ -33,7 +33,7 @@ func TestDirLinksDB(t *testing.T) {
 			SubPath:  "path1",
 		})
 		req.NoError(err)
-		traversedPath1Cids = append(traversedPath1Cids, unixfsstore.TraversedCID{c, i == len(path1Cids)-1})
+		traversedPath1Cids = append(traversedPath1Cids, unixfsstore.TraversedCID{CID: c, IsLeaf: i == len(path1Cids)-1})
 	}
 
 	path2Cids := testutil.GenerateCids(3)
@@ -48,7 +48,7 @@ func TestDirLinksDB(t *testing.T) {
 			SubPath:  "path2",
 		})
 		req.NoError(err)
-		traversedPath2Cids = append(traversedPath2Cids, unixfsstore.TraversedCID{c, i == len(path2Cids)-1})
+		traversedPath2Cids = append(traversedPath2Cids, unixfsstore.TraversedCID{CID: c, IsLeaf: i == len(path2Cids)-1})
 	}
 
 	// insert a 3rd path, with some non-unique CIDs
@@ -123,7 +123,7 @@ func TestDirLinksDB(t *testing.T) {
 	req.Equal([][]unixfsstore.TraversedCID{
 		{traversedPath1Cids[0], traversedPath2Cids[0]},
 		{traversedPath1Cids[1], traversedPath2Cids[1], traversedPath2Cids[0]},
-		{traversedPath1Cids[2], traversedPath2Cids[2], {path3Leaf, true}},
+		{traversedPath1Cids[2], traversedPath2Cids[2], {CID: path3Leaf, IsLeaf: true}},
 	},
 		rootCidsAll)
 }

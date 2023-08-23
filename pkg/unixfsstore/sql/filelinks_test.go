@@ -31,7 +31,7 @@ func TestFileLinksDB(t *testing.T) {
 			ByteMax:  uint64(i+1) * (1 << 22) * 10,
 		})
 		req.NoError(err)
-		traversedIntermediates = append(traversedIntermediates, unixfsstore.TraversedCID{c, false})
+		traversedIntermediates = append(traversedIntermediates, unixfsstore.TraversedCID{CID: c, IsLeaf: false})
 	}
 
 	leaves := testutil.GenerateCids(100)
@@ -47,7 +47,7 @@ func TestFileLinksDB(t *testing.T) {
 			ByteMax:  uint64(i+1) * (1 << 22),
 		})
 		req.NoError(err)
-		traversedLeaves = append(traversedLeaves, unixfsstore.TraversedCID{c, true})
+		traversedLeaves = append(traversedLeaves, unixfsstore.TraversedCID{CID: c, IsLeaf: true})
 	}
 
 	otherRootCid := testutil.GenerateCid()
@@ -64,7 +64,7 @@ func TestFileLinksDB(t *testing.T) {
 			ByteMax:  uint64(i+1) * (1 << 22) * 10,
 		})
 		req.NoError(err)
-		otherTraversedIntermediates = append(otherTraversedIntermediates, unixfsstore.TraversedCID{c, false})
+		otherTraversedIntermediates = append(otherTraversedIntermediates, unixfsstore.TraversedCID{CID: c, IsLeaf: false})
 	}
 
 	otherLeaves := testutil.GenerateCids(100)
@@ -80,7 +80,7 @@ func TestFileLinksDB(t *testing.T) {
 			ByteMax:  uint64(i+1) * (1 << 22),
 		})
 		req.NoError(err)
-		otherTraversedLeaves = append(otherTraversedLeaves, unixfsstore.TraversedCID{c, true})
+		otherTraversedLeaves = append(otherTraversedLeaves, unixfsstore.TraversedCID{CID: c, IsLeaf: true})
 	}
 
 	// test full
