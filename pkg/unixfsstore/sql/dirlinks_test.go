@@ -3,7 +3,7 @@ package sql_test
 import (
 	"context"
 	"database/sql"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -129,7 +129,7 @@ func TestDirLinksDB(t *testing.T) {
 }
 
 func CreateTestTmpDB(t *testing.T) *sql.DB {
-	f, err := ioutil.TempFile(t.TempDir(), "*.db")
+	f, err := os.CreateTemp(t.TempDir(), "*.db")
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	d, err := ufssql.SqlDB(f.Name())

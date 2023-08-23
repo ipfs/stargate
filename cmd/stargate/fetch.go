@@ -111,6 +111,9 @@ var fetchCmd = &cli.Command{
 					return err
 				}
 				ro, err := blockstore.OpenReadOnly(name)
+				if err != nil {
+					return err
+				}
 
 				ls := cidlink.DefaultLinkSystem()
 				ls.TrustedStorage = true
