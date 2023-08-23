@@ -57,7 +57,7 @@ func IterateUnixFSNode(ctx context.Context, root cid.Cid, lsys *ipld.LinkSystem,
 	if root.Prefix().Codec == uint64(multicodec.Raw) {
 		return visitor.OnRoot(ctx, root, data.Data_Raw)
 	}
-	nd, err := lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{root}, dagpb.Type.PBNode)
+	nd, err := lsys.Load(ipld.LinkContext{Ctx: ctx}, cidlink.Link{Cid: root}, dagpb.Type.PBNode)
 	if err != nil {
 		return err
 	}
@@ -104,9 +104,7 @@ func iterateHAMTDirLinks(ctx context.Context, root cid.Cid, substrate dagpb.PBNo
 				name := st.transformNameNode(next.FieldName().Must())
 				onPathCids := make([]cid.Cid, 0, len(cidsSoFar)+1)
 				// copy array before handing off, so further modifications do not affect result
-				for _, c := range cidsSoFar {
-					onPathCids = append(onPathCids, c)
-				}
+				onPathCids = append(onPathCids, cidsSoFar...)
 				onPathCids = append(onPathCids, next.FieldHash().Link().(cidlink.Link).Cid)
 				if err := visitor.OnPath(ctx, root, name.String(), onPathCids); err != nil {
 					return err
@@ -115,6 +113,9 @@ func iterateHAMTDirLinks(ctx context.Context, root cid.Cid, substrate dagpb.PBNo
 			continue
 		}
 		nd, err := lsys.Load(ipld.LinkContext{Ctx: ctx}, next.FieldHash().Link(), dagpb.Type.PBNode)
+		if err != nil {
+			return err
+		}
 
 		pbnd, ok := nd.(dagpb.PBNode)
 		if !ok {
@@ -157,7 +158,7 @@ func isValueLink(pbLink dagpb.PBLink, maxPadLen int) (bool, error) {
 	}
 	name := pbLink.FieldName().Must().String()
 	if len(name) < maxPadLen {
-		return false, hamt.ErrInvalidLinkName{name}
+		return false, hamt.ErrInvalidLinkName{Name: name}
 	}
 	if len(name) == maxPadLen {
 		return false, nil
@@ -222,7 +223,7 @@ func iterateFileLinks(ctx context.Context, root cid.Cid, substrate dagpb.PBNode,
 					return err
 				}
 			default:
-				return data.ErrInvalidDataType{nextData.DataType.Int()}
+				return data.ErrInvalidDataType{DataType: nextData.DataType.Int()}
 			}
 		}
 		if err := visitor.OnFileRange(ctx, root, nextCid, depth, bytesOffset, bytesOffset+nextSize, leaf); err != nil {

@@ -31,13 +31,6 @@ func newBlock() *block {
 	return newItem
 }
 
-func freeList(blocks []*block) {
-	for _, ri := range blocks {
-		ri.data = nil
-		blockPool.Put(ri)
-	}
-}
-
 type BlockWriter struct {
 	head        *block
 	tail        *block
@@ -103,18 +96,6 @@ func (bq *BlockWriter) Write(p []byte) (n int, err error) {
 		}
 		bq.fullWait.Wait()
 	}
-}
-
-func (bq *BlockWriter) empty() bool {
-	return bq.head == nil
-}
-
-func (bq *BlockWriter) first() []byte {
-	if bq.head == nil {
-		return nil
-	}
-
-	return bq.head.data
 }
 
 func (bq *BlockWriter) writeLoop() {

@@ -31,5 +31,5 @@ func (e ErrPathError) Error() string {
 type ErrNoMoreMessages struct{}
 
 func (e ErrNoMoreMessages) Error() string {
-	return fmt.Sprintf("query resolution already complete")
+	return "query resolution already complete"
 }
