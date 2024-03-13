@@ -2,7 +2,6 @@ module github.com/ipfs/stargate
 
 go 1.21
 
-
 require (
 	github.com/fatih/color v1.7.0
 	github.com/ipfs/go-block-format v0.0.3
