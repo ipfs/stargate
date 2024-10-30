@@ -1,3 +1,13 @@
+> [!WARNING]
+>
+> # ⚠️  this project was a PoC that is no longer maintained
+>
+> Since then:
+> - IPFS Ecosystem adopted [Trustless Gateway Specification](https://specs.ipfs.tech/http-gateways/trustless-gateway/) 
+>   - Partial DAG transwer was introduced in [IPIP-0402: Partial CAR Support on Trustless Gateways](https://specs.ipfs.tech/ipips/ipip-0402/)
+> 
+> If you want to run a production-grade HTTP Gateway consider migrating to [Boxo SDK's `boxo/gateway` library](https://github.com/ipfs/boxo/) or [Rainbow daemon](https://github.com/ipfs/rainbow/) which support both of the above and more.
+
 # StarGate
 
 > A Robust Verifiable HTTP Protocol For Content Addressed Data
